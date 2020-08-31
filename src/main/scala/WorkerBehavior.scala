@@ -9,7 +9,7 @@ import akka.actor.typed.scaladsl.Behaviors
 object WorkerBehavior {
   case class ManagerCommand(sender: ActorRef[ManagerBehavior.Result])
 
-  def apply(): Behavior[ManagerCommand] = {
+  def apply(): Behavior[ManagerCommand] = Behaviors.receiveMessage[ManagerCommand] {
     case ManagerCommand(sender) => {
       val bigInteger: BigInteger = new BigInteger(2000, new Random)
       val prime = bigInteger.nextProbablePrime()
@@ -21,7 +21,7 @@ object WorkerBehavior {
     }
   }
 
-  def handleMessagesWhenWeAlreadyHaveAPrimeNumber(prime: BigInteger):Behavior[ManagerCommand] = {
+  def handleMessagesWhenWeAlreadyHaveAPrimeNumber(prime: BigInteger):Behavior[ManagerCommand] = Behaviors.receiveMessage[ManagerCommand] {
     case ManagerCommand(sender) => {
       val r = new Random();
       if (r.nextInt(5) < 2) {

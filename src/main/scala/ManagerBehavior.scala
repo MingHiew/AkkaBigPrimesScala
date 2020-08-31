@@ -21,31 +21,34 @@ object ManagerBehavior {
     Behaviors.setup[Command]{context =>
       implicit val timeout: Timeout = 3.seconds
       var primes = List[BigInteger]()
-      val behavior = Behaviors.receive[Command] { msg =>
-        msg match {
-          case Instruction(message) => {
-            if (message == "start") {
-              for (i <- 1 to 20) {
-                val worker = context.spawn(WorkerBehavior(), s"worker$i")
-                askWorkerForAPrime(worker)
+      val behavior = Behaviors.receiveMessage[Command]{
+        case Instruction(message) => {
+          if(message == "start") {
+            for (i <- 1 to 20) {
+              val worker = context.spawn(WorkerBehavior(),s"worker$i")
+              context.ask(worker,WorkerBehavior.ManagerCommand){
+                case Success(ManagerBehavior.Result(result)) => ManagerBehavior.Result(result)
+                case Failure(exception) => NoResponseReceived(worker)
               }
             }
-            Behaviors.same
           }
-          case Result(result) => {
-            primes = primes :+ result
-            println(s"I have received ${primes.size} prime numbers");
-            if (primes.size == 20) {
-              primes.foreach(println)
-            }
-            Behaviors.same
-          }
-          case NoResponseReceived(worker) => {
-            println(s"Retrying with worker ${worker.path}")
-            askWorkerForAPrime(worker)
-            Behaviors.same
-          }
+          Behaviors.same
         }
+        case Result(result) => {
+          primes = primes :+ result
+          println(s"I have received ${primes.size} prime numbers");
+          if (primes.size == 20) {
+            primes.foreach(println)
+          }
+          Behaviors.same
+        }
+        case NoResponseReceived(worker) => {}
+          println(s"Retrying with worker ${worker.path}")
+          context.ask(worker,WorkerBehavior.ManagerCommand){
+            case Success(ManagerBehavior.Result(result)) => ManagerBehavior.Result(result)
+            case Failure(exception) => NoResponseReceived(worker)
+          }
+          Behaviors.same
       }
 
 
@@ -57,8 +60,5 @@ object ManagerBehavior {
       }
       behavior
     }
-
-
-
 
 }
